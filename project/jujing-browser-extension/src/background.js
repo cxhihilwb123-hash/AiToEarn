@@ -1,6 +1,6 @@
 import { PLATFORM_ORIGINS, REQUIRED_PERMISSIONS, RuntimeAction } from './shared.js'
 
-const EXTENSION_VERSION = '0.1.4'
+const EXTENSION_VERSION = '0.2.0'
 
 const platformCookieUrls = {
   bilibili: ['https://www.bilibili.com'],

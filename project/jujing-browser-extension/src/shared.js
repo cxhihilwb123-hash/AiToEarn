@@ -1,4 +1,4 @@
-export const PAGE_SOURCE = 'aitoearn-web'
+export const PAGE_SOURCE = 'jujing-radar-web'
 
 export const MessageType = {
   CHECK_PERMISSION_REQUEST: 'CHECK_PERMISSION_REQUEST',

@@ -2,8 +2,11 @@
  * 插件相关工具函数
  */
 
-import type { PlatAccountInfo, PlatformPublishTask, PluginAccountPlatformType } from './types/baseTypes'
-import { PlatformTaskStatus, PLUGIN_ACCOUNT_AUTH_PLATFORMS } from './types/baseTypes'
+import type { PlatformConfigOptions } from './types'
+import type { PlatAccountInfo, PlatformPublishTask, PluginPlatformType } from './types/baseTypes'
+import type { IPubParams } from '@/components/PublishDialog/publishDialog.type'
+import { PlatType } from '@/app/config/platConfig'
+import { PlatformTaskStatus, PLUGIN_SUPPORTED_PLATFORMS } from './types/baseTypes'
 
 /** 生成唯一ID */
 export function generateId() {
@@ -26,9 +29,42 @@ export function calculateOverallStatus(platformTasks: PlatformPublishTask[]) {
 
 /** 创建初始平台账号映射 */
 export function createInitialPlatformAccounts() {
-  const accounts: Record<PluginAccountPlatformType, PlatAccountInfo | null> = {} as any
-  for (const platform of PLUGIN_ACCOUNT_AUTH_PLATFORMS) {
-    accounts[platform] = null
+  return Object.fromEntries(
+    PLUGIN_SUPPORTED_PLATFORMS.map(platform => [platform, null]),
+  ) as Record<PluginPlatformType, PlatAccountInfo | null>
+}
+
+/** 构造插件发布平台特定配置 */
+export function buildPluginPlatformConfig(
+  platform: PluginPlatformType,
+  params: IPubParams,
+): PlatformConfigOptions | undefined {
+  const option = params.option as any
+
+  if (platform === PlatType.Xhs) {
+    const userDeclarationBind = option.xhs?.userDeclarationBind
+
+    return userDeclarationBind === null || userDeclarationBind === undefined
+      ? undefined
+      : { userDeclarationBind }
   }
-  return accounts
+
+  if (platform === PlatType.WxSph && params.video) {
+    return {
+      wxSph: {
+        videoMetadata: {
+          width: params.video.width,
+          height: params.video.height,
+          duration: params.video.duration,
+          size: params.video.size,
+        },
+        poiInfo: option.wxSph?.poiInfo,
+        event: option.wxSph?.activity,
+        extLink: option.wxSph?.extLink,
+        postFlag: option.wxSph?.isOriginal ? 1 : 0,
+      },
+    }
+  }
+
+  return undefined
 }

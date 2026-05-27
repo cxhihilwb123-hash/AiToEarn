@@ -6,10 +6,10 @@ import type {
   CustomerRadarSocialAccount,
   CustomerReplyCandidate,
 } from '@/api/customerRadar'
-import type { AIToEarnPluginAPI } from '@/store/plugin/types/baseTypes'
+import type { RadarPluginAPI } from '@/store/radarPlugin/bridge'
 import { PlatType } from '@/app/config/platConfig'
-import { ensurePluginBridge, waitForPluginBridge } from '@/store/plugin/bridge'
-import { platformManager } from '@/store/plugin/plats/manager'
+import { ensurePluginBridge, waitForPluginBridge } from '@/store/radarPlugin/bridge'
+import { platformManager } from '@/store/radarPlugin/plats/manager'
 
 const platformMap: Partial<Record<CustomerRadarPlatform, PlatType>> = {
   bilibili: PlatType.BILIBILI,
@@ -793,7 +793,7 @@ function normalizeKeywordDiscoverySignals(
 
 export function getCustomerRadarPlatformCapabilities(
   platforms: CustomerRadarPlatform[],
-  plugin?: AIToEarnPluginAPI | null,
+  plugin?: RadarPluginAPI | null,
 ): CustomerRadarPlatformCapability[] {
   const capabilities = getExecutionCapabilities(plugin)
 
@@ -976,9 +976,9 @@ export async function scanOwnedPostComments(input: ScanOwnedPostCommentsInput) {
   if (!plugin) {
     return {
       comments: [],
-        log: createLog('warning', '执行桥未接入', `${platformLabels[input.platform]}雷达评论抓取功能已开放；当前等待该平台执行通道接入，频道登录不等于客户雷达抓取能力。`),
-        success: false,
-      }
+      log: createLog('warning', '执行桥未接入', `${platformLabels[input.platform]}雷达评论抓取功能已开放；当前等待该平台执行通道接入，频道登录不等于客户雷达抓取能力。`),
+      success: false,
+    }
   }
 
   try {

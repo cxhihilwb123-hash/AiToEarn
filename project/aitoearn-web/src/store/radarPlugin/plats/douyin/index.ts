@@ -16,6 +16,7 @@
 import type {
   CommentListParams,
   CommentListResult,
+  CommentItem,
   CommentParams,
   CommentResult,
   DirectMessageParams,
@@ -31,6 +32,7 @@ import type {
 } from '../types'
 import type { DouyinDirectMessageResponse, DouyinInteractionResponse } from './types'
 import { PlatType } from '@/app/config/platConfig'
+import { ensurePluginBridge } from '../../bridge'
 import { getHomeFeedList, homeFeedCursor } from './homeFeed'
 import { getWorkDetail, getWorkDetailFromListItem } from './workDetail'
 
@@ -43,10 +45,12 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
   /**
    * 检查插件是否可用
    */
-  private checkPlugin(): void {
-    if (!window.AIToEarnPlugin) {
+  private getPlugin() {
+    const plugin = ensurePluginBridge()
+    if (!plugin) {
       throw new Error('插件未安装或未就绪')
     }
+    return plugin
   }
 
   /**
@@ -64,25 +68,9 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
    * @param isLike true=点赞，false=取消点赞
    */
   async likeWork(workId: string, isLike: boolean): Promise<LikeResult> {
-    this.checkPlugin()
+    const plugin = this.getPlugin()
 
-    if (window.AIToEarnPlugin!.unifiedInteraction) {
-      const response = await window.AIToEarnPlugin!.unifiedInteraction({
-        platform: 'douyin',
-        action: 'like',
-        workLink: `https://www.douyin.com/video/${workId}`,
-        targetState: isLike,
-        needScreenshot: true,
-      })
-      return {
-        success: response.success,
-        message: response.message || response.error,
-        screenshot: response.screenshot,
-        rawData: response,
-      }
-    }
-
-    const response = (await window.AIToEarnPlugin!.douyinInteraction({
+    const response = (await plugin.douyinInteraction({
       action: 'like',
       workId,
       targetState: isLike,
@@ -102,7 +90,7 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
    * @param params 评论参数
    */
   async commentWork(params: CommentParams): Promise<CommentResult> {
-    this.checkPlugin()
+    const plugin = this.getPlugin()
 
     // 不支持二级评论
     if (params.replyToCommentId) {
@@ -112,26 +100,7 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
       }
     }
 
-    if (window.AIToEarnPlugin!.unifiedInteraction) {
-      const response = await window.AIToEarnPlugin!.unifiedInteraction({
-        platform: 'douyin',
-        action: 'comment',
-        workLink: `https://www.douyin.com/video/${params.workId}`,
-        targetState: true,
-        content: params.content,
-        needScreenshot: true,
-      })
-      return {
-        success: response.success,
-        message: response.message || response.error,
-        screenshot: response.screenshot,
-        needHumanAssist: response.needHumanAssist,
-        verificationReason: response.verificationReason,
-        rawData: response,
-      }
-    }
-
-    const response = (await window.AIToEarnPlugin!.douyinInteraction({
+    const response = (await plugin.douyinInteraction({
       action: 'comment',
       workId: params.workId,
       targetState: true,
@@ -152,25 +121,9 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
    * @param isFavorite true=收藏，false=取消收藏
    */
   async favoriteWork(workId: string, isFavorite: boolean): Promise<FavoriteResult> {
-    this.checkPlugin()
+    const plugin = this.getPlugin()
 
-    if (window.AIToEarnPlugin!.unifiedInteraction) {
-      const response = await window.AIToEarnPlugin!.unifiedInteraction({
-        platform: 'douyin',
-        action: 'favorite',
-        workLink: `https://www.douyin.com/video/${workId}`,
-        targetState: isFavorite,
-        needScreenshot: true,
-      })
-      return {
-        success: response.success,
-        message: response.message || response.error,
-        screenshot: response.screenshot,
-        rawData: response,
-      }
-    }
-
-    const response = (await window.AIToEarnPlugin!.douyinInteraction({
+    const response = (await plugin.douyinInteraction({
       action: 'favorite',
       workId,
       targetState: isFavorite,
@@ -189,7 +142,7 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
    * @param params 私信参数
    */
   async sendDirectMessage(params: DirectMessageParams): Promise<DirectMessageResult> {
-    this.checkPlugin()
+    const plugin = this.getPlugin()
 
     // 验证参数
     if (!params.workId && !params.authorUrl) {
@@ -206,7 +159,7 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
       }
     }
 
-    const response = (await window.AIToEarnPlugin!.douyinDirectMessage({
+    const response = (await plugin.douyinDirectMessage({
       workId: params.workId,
       authorUrl: params.authorUrl,
       content: params.content,
@@ -251,13 +204,53 @@ class DouyinPlatformInteraction implements IPlatformInteraction {
    * @param params 评论列表请求参数
    */
   async getCommentList(params: CommentListParams): Promise<CommentListResult> {
-    // TODO: 实现抖音评论列表
+    const plugin = this.getPlugin()
+    const response = await plugin.unifiedInteraction?.({
+      action: 'scanComments',
+      count: params.count || 30,
+      platform: 'douyin',
+      workId: params.workId,
+    })
+
+    if (!response?.success) {
+      return {
+        success: false,
+        message: response?.error || response?.message || '抖音评论列表抓取失败，请确认作品页已打开且评论区可见',
+        comments: [],
+        cursor: '',
+        hasMore: false,
+        rawData: response,
+      }
+    }
+
+    const comments = Array.isArray(response.comments)
+      ? response.comments.map((item: any, index: number): CommentItem => ({
+          content: item.content || '',
+          createTime: Number(item.createTime || Date.now()),
+          hasMoreReplies: false,
+          id: item.id || `douyin-comment-${Date.now()}-${index}`,
+          ipLocation: item.ipLocation || '',
+          isAuthor: false,
+          isLiked: false,
+          likeCount: Number(item.likeCount || 0),
+          origin: item,
+          replies: [],
+          replyCount: 0,
+          user: {
+            avatar: item.user?.avatar || '',
+            id: item.user?.id || `douyin-user-${index}`,
+            nickname: item.user?.nickname || `抖音用户${index + 1}`,
+          },
+        }))
+      : []
+
     return {
-      success: false,
-      message: '抖音评论列表功能开发中',
-      comments: [],
+      success: comments.length > 0,
+      message: response.message || (comments.length > 0 ? `已从抖音页面识别 ${comments.length} 条评论` : '抖音页面未识别到评论'),
+      comments,
       cursor: '',
       hasMore: false,
+      rawData: response,
     }
   }
 

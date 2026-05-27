@@ -1,5 +1,5 @@
 (() => {
-  const PAGE_SOURCE = 'aitoearn-web'
+  const PAGE_SOURCE = 'jujing-radar-web'
   const REQUEST_TIMEOUT_MS = 120000
 
   const MessageType = {
@@ -65,7 +65,7 @@
     })
   }
 
-  class JuJingPluginApi {
+  class JuJingRadarPluginApi {
     checkPermission() {
       return request(MessageType.CHECK_PERMISSION_REQUEST, MessageType.CHECK_PERMISSION_RESPONSE)
     }
@@ -155,10 +155,10 @@
     }
   }
 
-  window.AIToEarnPlugin = new JuJingPluginApi()
-  window.JuJingBrowserBridge = window.AIToEarnPlugin
-  document.documentElement.dataset.jujingPluginApi = 'ready'
-  window.dispatchEvent(new CustomEvent('jujing-plugin-ready', {
-    detail: { version: '0.1.0' },
+  window.JuJingRadarPlugin = new JuJingRadarPluginApi()
+  window.JuJingRadarBridge = window.JuJingRadarPlugin
+  document.documentElement.dataset.jujingRadarPluginApi = 'ready'
+  window.dispatchEvent(new CustomEvent('jujing-radar-plugin-ready', {
+    detail: { version: '0.2.0' },
   }))
 })()

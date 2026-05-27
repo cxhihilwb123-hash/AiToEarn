@@ -13,16 +13,6 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useShallow } from 'zustand/react/shallow'
 import { useTransClient } from '@/app/i18n/client'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useChannelManagerStore } from './channelManagerStore'
 import { AuthLoadingPage } from './components/AuthLoadingPage'
@@ -32,21 +22,11 @@ import { MainPage } from './components/MainPage'
 export function ChannelManager() {
   const { t } = useTransClient('account')
 
-  const {
-    open,
-    currentView,
-    pendingPluginAccountConfirm,
-    closeModal,
-    confirmPluginAccountSync,
-    rejectPluginAccountSync,
-  } = useChannelManagerStore(
+  const { open, currentView, closeModal } = useChannelManagerStore(
     useShallow(state => ({
       open: state.open,
       currentView: state.currentView,
-      pendingPluginAccountConfirm: state.pendingPluginAccountConfirm,
       closeModal: state.closeModal,
-      confirmPluginAccountSync: state.confirmPluginAccountSync,
-      rejectPluginAccountSync: state.rejectPluginAccountSync,
     })),
   )
 
@@ -75,56 +55,23 @@ export function ChannelManager() {
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={closeModal}>
-        <DialogContent data-testid="channel-manager-dialog" className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden p-0 md:h-[700px] md:max-h-[700px] md:max-w-5xl md:rounded-lg">
-          {/* Header - 只在主页和连接列表页显示，auth-loading 时用 VisuallyHidden 保留无障碍标题 */}
-          {currentView !== 'auth-loading' ? (
-            <DialogHeader className="border-b px-6 py-4">
-              <DialogTitle className="text-lg font-semibold">{getTitle()}</DialogTitle>
-            </DialogHeader>
-          ) : (
-            <VisuallyHidden>
-              <DialogTitle>{getTitle()}</DialogTitle>
-            </VisuallyHidden>
-          )}
+    <Dialog open={open} onOpenChange={closeModal}>
+      <DialogContent data-testid="channel-manager-dialog" className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden border-border/70 bg-background p-0 shadow-2xl md:h-[744px] md:max-h-[calc(100dvh-32px)] md:max-w-[1160px] md:rounded-xl">
+        {/* Header - 只在主页和连接列表页显示，auth-loading 时用 VisuallyHidden 保留无障碍标题 */}
+        {currentView !== 'auth-loading' ? (
+          <DialogHeader className="justify-center space-y-0 border-b border-border/70 bg-background px-6 py-4 md:min-h-[68px] md:px-7">
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">{getTitle()}</DialogTitle>
+          </DialogHeader>
+        ) : (
+          <VisuallyHidden>
+            <DialogTitle>{getTitle()}</DialogTitle>
+          </VisuallyHidden>
+        )}
 
-          {/* 内容区域 */}
-          <div className="min-h-0 flex-1">{renderView()}</div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={Boolean(pendingPluginAccountConfirm)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen)
-            rejectPluginAccountSync()
-        }}
-      >
-        <AlertDialogContent data-testid="cm-plugin-account-confirm-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认频道账号</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingPluginAccountConfirm
-                ? `已检测到${pendingPluginAccountConfirm.platformName}账号：${pendingPluginAccountConfirm.accountName}。点确认后会添加到频道列表。`
-                : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="cm-plugin-account-reject-btn">切换账号</AlertDialogCancel>
-            <AlertDialogAction
-              data-testid="cm-plugin-account-confirm-btn"
-              onClick={(event) => {
-                event.preventDefault()
-                confirmPluginAccountSync()
-              }}
-            >
-              确认添加
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        {/* 内容区域 */}
+        <div className="min-h-0 flex-1">{renderView()}</div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

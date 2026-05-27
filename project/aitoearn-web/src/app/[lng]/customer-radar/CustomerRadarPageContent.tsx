@@ -27,7 +27,7 @@ import type { GlobalKnowledgeItem } from '@/api/globalKnowledge'
 import type { SocialAccount } from '@/api/types/account.type'
 import { AccountStatus } from '@/app/config/accountConfig'
 import { PlatType } from '@/app/config/platConfig'
-import { waitForPluginBridge } from '@/store/plugin/bridge'
+import { waitForPluginBridge } from '@/store/radarPlugin/bridge'
 import type { CommentItem } from '@/store/plugin/plats/types'
 import { useAccountStore } from '@/store/account'
 import {
@@ -2120,10 +2120,10 @@ export function CustomerRadarPageContent() {
     }
 
     try {
-      result.version = await withTimeout(plugin.getVersion?.(), 8000, { name: '未知执行器', version: '未知' })
+      result.version = await withTimeout(plugin.getVersion?.(), 8000, { version: '未知' })
     }
     catch {
-      result.version = { name: '未知执行器', version: '未知' }
+      result.version = { version: '未知' }
     }
 
     try {

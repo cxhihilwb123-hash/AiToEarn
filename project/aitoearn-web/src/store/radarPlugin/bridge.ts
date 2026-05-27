@@ -1,6 +1,27 @@
-import type { AIToEarnPluginAPI } from './types/baseTypes'
+import type { AIToEarnPluginAPI, PermissionCheckResult, PlatformRequestParams, PluginVersionInfo } from '@/store/plugin/types/baseTypes'
 
-const PAGE_SOURCE = 'aitoearn-web'
+export type RadarPluginAPI = Omit<AIToEarnPluginAPI, 'douyinRequest' | 'remoteAutomationRun' | 'unifiedInteraction' | 'xhsRequest'> & {
+  checkPermission: () => Promise<PermissionCheckResult>
+  douyinRequest: <T = any>(params: PlatformRequestParams) => Promise<T>
+  remoteAutomationRun?: <T = unknown>(params: {
+    code: string
+    needScreenshot?: boolean
+    timeout?: number
+    url: string
+  }) => Promise<{
+    error?: string
+    executionTime?: number
+    message?: string
+    result?: T
+    screenshot?: string
+    success: boolean
+  }>
+  unifiedInteraction?: (params: Record<string, any>) => Promise<any>
+  xhsRequest: <T = any>(params: PlatformRequestParams) => Promise<T>
+  getVersion?: () => Promise<PluginVersionInfo & { name?: string }>
+}
+
+const PAGE_SOURCE = 'jujing-radar-web'
 const REQUEST_TIMEOUT_MS = 120000
 const DEFAULT_BRIDGE_WAIT_MS = 6000
 const BRIDGE_POLL_INTERVAL_MS = 250
@@ -68,7 +89,7 @@ function request<T = any>(type: string, responseType: string, payload?: unknown,
   })
 }
 
-function createPageBridge(): AIToEarnPluginAPI {
+function createPageBridge(): RadarPluginAPI {
   return {
     async checkPermission() {
       return request(MessageType.CHECK_PERMISSION_REQUEST, MessageType.CHECK_PERMISSION_RESPONSE)
@@ -152,26 +173,32 @@ function createPageBridge(): AIToEarnPluginAPI {
 }
 
 function isCustomExtensionBridgeReady() {
-  return document.documentElement.dataset.jujingExtensionBridge === 'ready'
+  return document.documentElement.dataset.jujingRadarExtensionBridge === 'ready'
 }
 
 function getPluginBridge() {
-  if (window.AIToEarnPlugin?.remoteAutomationRun)
-    return window.AIToEarnPlugin
+  const radarWindow = window as Window & {
+    JuJingRadarPlugin?: RadarPluginAPI
+    __JuJingRadarMessageBridge?: RadarPluginAPI
+    JuJingRadarBridge?: RadarPluginAPI
+  }
 
-  if (window.AIToEarnPlugin && !window.__AIToEarnMessageBridge)
-    window.__AIToEarnMessageBridge = createPageBridge()
+  if (radarWindow.JuJingRadarPlugin?.remoteAutomationRun)
+    return radarWindow.JuJingRadarPlugin
 
-  if (window.__AIToEarnMessageBridge)
-    return window.__AIToEarnMessageBridge
+  if (radarWindow.JuJingRadarPlugin && !radarWindow.__JuJingRadarMessageBridge)
+    radarWindow.__JuJingRadarMessageBridge = createPageBridge()
+
+  if (radarWindow.__JuJingRadarMessageBridge)
+    return radarWindow.__JuJingRadarMessageBridge
 
   if (!isCustomExtensionBridgeReady())
     return null
 
-  window.__AIToEarnMessageBridge = createPageBridge()
-  window.AIToEarnPlugin = window.__AIToEarnMessageBridge
-  window.JuJingBrowserBridge = window.__AIToEarnMessageBridge
-  return window.__AIToEarnMessageBridge
+  radarWindow.__JuJingRadarMessageBridge = createPageBridge()
+  radarWindow.JuJingRadarPlugin = radarWindow.__JuJingRadarMessageBridge
+  radarWindow.JuJingRadarBridge = radarWindow.__JuJingRadarMessageBridge
+  return radarWindow.__JuJingRadarMessageBridge
 }
 
 export function ensurePluginBridge() {
@@ -181,7 +208,7 @@ export function ensurePluginBridge() {
   return getPluginBridge()
 }
 
-export function waitForPluginBridge(timeoutMs = DEFAULT_BRIDGE_WAIT_MS): Promise<AIToEarnPluginAPI | null> {
+export function waitForPluginBridge(timeoutMs = DEFAULT_BRIDGE_WAIT_MS): Promise<RadarPluginAPI | null> {
   if (typeof window === 'undefined')
     return Promise.resolve(null)
 
@@ -196,8 +223,7 @@ export function waitForPluginBridge(timeoutMs = DEFAULT_BRIDGE_WAIT_MS): Promise
     const cleanup = () => {
       if (timer)
         window.clearTimeout(timer)
-      window.removeEventListener('jujing-plugin-ready', check)
-      window.removeEventListener('aitoearn-plugin-ready', check)
+      window.removeEventListener('jujing-radar-plugin-ready', check)
     }
 
     function check() {
@@ -217,8 +243,7 @@ export function waitForPluginBridge(timeoutMs = DEFAULT_BRIDGE_WAIT_MS): Promise
       timer = window.setTimeout(check, BRIDGE_POLL_INTERVAL_MS)
     }
 
-    window.addEventListener('jujing-plugin-ready', check)
-    window.addEventListener('aitoearn-plugin-ready', check)
+    window.addEventListener('jujing-radar-plugin-ready', check)
     timer = window.setTimeout(check, BRIDGE_POLL_INTERVAL_MS)
   })
 }

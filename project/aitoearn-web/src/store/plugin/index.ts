@@ -2,6 +2,9 @@
  * 浏览器插件模块统一导出
  */
 
+// Utils
+export { getWxSphLoginStatus, getXhsLoginStatus, isPluginPlatformAccountReady } from './account.utils'
+
 // Constants
 export {
   DEFAULT_POLLING_INTERVAL,
@@ -26,16 +29,12 @@ export type {
   LikeResult,
   SupportedPlatformType,
 } from './plats'
+export { proxyRequest } from './request'
 
 // Store
 export { usePluginStore } from './store'
 
-export type {
-  ExecutePluginPublishParams,
-  PlatformAccountsMap,
-  PlatformProgressMap,
-  PluginPublishItem,
-} from './store'
+export type { ExecutePluginPublishParams, PlatformAccountsMap, PlatformProgressMap, PluginPublishItem } from './store'
 
 // Types
 export type {
@@ -44,8 +43,9 @@ export type {
   PermissionCheckResult,
   PlatAccountInfo,
   PlatformPublishTask,
-  PluginAccountPlatformType,
   PluginPlatformType,
+  PluginProxyRequestParams,
+  PluginProxyResponse,
   PluginStore,
   ProgressCallback,
   ProgressEvent,
@@ -53,15 +53,22 @@ export type {
   PublishResult,
   PublishTask,
   PublishTaskListConfig,
+  WxSphEventInfo,
+  WxSphLinkAnchor,
+  WxSphLocationItem,
+  WxSphLocationSearchParams,
+  WxSphLoginStatus,
+  WxSphStartLinkPollingParams,
+  WxSphStartLinkPollingResult,
+  XhsLoginStatus,
 } from './types/baseTypes'
 
 export {
   PlatformTaskStatus,
-  PLUGIN_ACCOUNT_AUTH_PLATFORMS,
   PLUGIN_SUPPORTED_PLATFORMS,
   PluginStatus,
+  WX_SPH_LOGIN_EXPIRED_CODE,
 } from './types/baseTypes'
-// Utils
 export {
   formatFileSize,
   formatProgress,

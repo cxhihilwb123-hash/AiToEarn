@@ -1,5 +1,5 @@
 const REQUEST_TIMEOUT_MS = 120000
-const PAGE_SOURCE = 'aitoearn-web'
+const PAGE_SOURCE = 'jujing-radar-web'
 
 const allowedWebHostnames = [
   'localhost',
@@ -166,7 +166,7 @@ async function handlePageMessage(event) {
   }
 }
 
-document.documentElement.dataset.jujingExtensionBridge = 'ready'
+document.documentElement.dataset.jujingRadarExtensionBridge = 'ready'
 injectWebApi()
 window.addEventListener('message', handlePageMessage)
 }

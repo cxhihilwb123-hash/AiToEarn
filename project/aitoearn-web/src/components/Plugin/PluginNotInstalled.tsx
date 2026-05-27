@@ -5,11 +5,13 @@
 
 'use client'
 
-import { BookOpen, CloudDownload, Monitor, Puzzle } from 'lucide-react'
+import { BookOpen, Chrome, CloudDownload, Github, Monitor, Puzzle } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import { useChannelManagerStore } from '@/components/ChannelManager'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePluginStore } from '@/store/plugin'
 import { PLUGIN_DOWNLOAD_LINKS } from '@/store/plugin/constants'
 
 /**
@@ -59,6 +61,13 @@ function MobilePluginTip() {
 export function PluginNotInstalled() {
   const { t } = useTranslation('plugin')
   const isMobile = useIsMobile()
+  const closePluginModal = usePluginStore(state => state.closePluginModal)
+  const closeChannelManager = useChannelManagerStore(state => state.closeModal)
+
+  const handleViewGuide = () => {
+    closePluginModal()
+    closeChannelManager()
+  }
 
   if (isMobile) {
     return <MobilePluginTip />
@@ -82,23 +91,36 @@ export function PluginNotInstalled() {
       {/* 下载按钮 */}
       <div className="flex w-full max-w-xs flex-col space-y-3">
         <Button className="w-full gap-2" asChild>
-          <Link href={PLUGIN_DOWNLOAD_LINKS.chrome}>
-            <BookOpen className="h-4 w-4" />
+          <a href={PLUGIN_DOWNLOAD_LINKS.chrome} target="_blank" rel="noopener noreferrer">
+            <Chrome className="h-4 w-4" />
             {t('header.chromeWebStore')}
-          </Link>
+          </a>
         </Button>
 
         <Button variant="outline" className="w-full gap-2" asChild>
           <a href={PLUGIN_DOWNLOAD_LINKS.china} target="_blank" rel="noopener noreferrer">
             <CloudDownload className="h-4 w-4" />
-            {t('header.chinaDownload')}
+            {t('header.chinaLatestZipDownload')}
+          </a>
+        </Button>
+
+        <Button variant="outline" className="w-full gap-2" asChild>
+          <a href={PLUGIN_DOWNLOAD_LINKS.github} target="_blank" rel="noopener noreferrer">
+            <Github className="h-4 w-4" />
+            {t('header.githubLatestDownload')}
           </a>
         </Button>
       </div>
 
-      <p className="mt-4 max-w-xs text-center text-xs leading-5 text-muted-foreground">
-        {t('header.viewGuide')}
-      </p>
+      {/* 查看安装教程链接 */}
+      <Link
+        href="/websit/plugin-guide"
+        onClick={handleViewGuide}
+        className="mt-6 flex items-center justify-center gap-2 w-full max-w-xs px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors cursor-pointer"
+      >
+        <BookOpen className="h-5 w-5" />
+        <span className="font-medium">{t('header.viewInstallGuide')}</span>
+      </Link>
     </div>
   )
 }

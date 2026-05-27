@@ -9,7 +9,7 @@ import type {
   PublishTask,
   PublishTaskListConfig,
 } from './index'
-import type { PlatAccountInfo } from './plat.type'
+import type { PlatAccountInfo, WxSphLoginStatus, XhsLoginStatus } from './plat.type'
 import { PlatType } from '@/app/config/platConfig'
 
 // 导出任务相关类型
@@ -26,12 +26,36 @@ interface PublishResult {
   publishTime?: number
   failReason?: string
   errorCode?: string
+  platformData?: unknown
+}
+
+export interface WxSphLinkAnchor {
+  mediaMd5sum?: string
+  videoClipTaskId?: string
+  scheduledTime?: number
+}
+
+export interface WxSphStartLinkPollingParams {
+  recordId: string
+  mediaMd5sum: string
+  apiBaseUrl?: string
+  authToken?: string
+  accountId?: string
+  videoClipTaskId?: string
+  scheduledTime?: number
+}
+
+export interface WxSphStartLinkPollingResult {
+  success: boolean
+  status?: 'pending' | 'ready' | 'failed'
+  error?: string
+  code?: string
 }
 
 /**
  * 导出基础类型
  */
-export type { PlatAccountInfo, ProgressEvent, PublishResult }
+export type { PlatAccountInfo, ProgressEvent, PublishResult, WxSphLoginStatus, XhsLoginStatus }
 
 /**
  * 插件连接状态
@@ -50,44 +74,17 @@ export enum PluginStatus {
 }
 
 /**
- * 插件发布支持的平台列表。
- *
- * 注意：这里只控制内容发布是否走插件执行，不等同于频道账号登录检测范围。
+ * 插件支持的平台列表
  */
-export const PLUGIN_SUPPORTED_PLATFORMS = [PlatType.Xhs] as const
-
-/**
- * 插件账号登录检测支持的平台列表。
- *
- * 原版插件登录链路是打开/读取平台网页登录态，再同步账号到频道管理；不需要先有
- * 官方 OAuth client id，也不要求用户在未登录前就已经有平台账号 id。
- */
-export const PLUGIN_ACCOUNT_AUTH_PLATFORMS = [
-  PlatType.Xhs,
-  PlatType.Douyin,
-  PlatType.KWAI,
-  PlatType.BILIBILI,
-  PlatType.WxSph,
-  PlatType.WxGzh,
-  PlatType.Tiktok,
-  PlatType.YouTube,
-  PlatType.Facebook,
-  PlatType.Instagram,
-  PlatType.Threads,
-  PlatType.Twitter,
-  PlatType.Pinterest,
-  PlatType.LinkedIn,
-] as const
+export const PLUGIN_SUPPORTED_PLATFORMS = [PlatType.Xhs, PlatType.WxSph] as const
 
 /**
  * 插件支持的平台类型（直接复用 PlatType）
  */
 export type PluginPlatformType = (typeof PLUGIN_SUPPORTED_PLATFORMS)[number]
 
-/**
- * 插件账号登录检测平台类型
- */
-export type PluginAccountPlatformType = (typeof PLUGIN_ACCOUNT_AUTH_PLATFORMS)[number]
+/** 视频号登录过期错误码 */
+export const WX_SPH_LOGIN_EXPIRED_CODE = 'WX_SPH_LOGIN_EXPIRED' as const
 
 /**
  * 发布参数（扩展基础类型，添加 platform 字段）
@@ -131,6 +128,36 @@ export interface PlatformRequestParams {
 }
 
 /**
+ * 插件通用代理请求参数
+ */
+export interface PluginProxyRequestParams {
+  /** 完整请求 URL */
+  url: string
+  /** 额外请求头 */
+  headers?: Record<string, string>
+  /** 请求体；为空时插件按 GET，有值时按 POST */
+  body?: unknown
+}
+
+/**
+ * 插件通用代理响应
+ */
+export interface PluginProxyResponse {
+  /** 实际响应 URL（重定向后） */
+  url: string
+  /** HTTP 状态码 */
+  status: number
+  /** HTTP 状态描述 */
+  statusText: string
+  /** 是否为 2xx */
+  ok: boolean
+  /** 响应头 */
+  headers: Record<string, string>
+  /** 原始响应体文本 */
+  body: string
+}
+
+/**
  * 抖音交互操作参数
  */
 export interface DouyinInteractionParams {
@@ -169,40 +196,43 @@ export interface DouyinInteractionResult {
 }
 
 /**
- * 远程页面自动化执行参数
+ * 插件版本信息
  */
-export interface RemoteAutomationRunParams {
-  /** 目标页面 URL */
-  url: string
-  /** 在目标页面主上下文执行的 JS 代码 */
-  code: string
-  /** 超时时间 */
-  timeout?: number
-  /** 是否返回截图 */
-  needScreenshot?: boolean
+export interface WxSphLocationSearchParams {
+  query: string
+  longitude?: number
+  latitude?: number
 }
 
-/**
- * 远程页面自动化执行结果
- */
-export interface RemoteAutomationRunResult<T = any> {
-  success: boolean
-  message?: string
-  error?: string
-  result?: T
-  executionTime?: number
-  screenshot?: string
+export interface WxSphLocationItem {
+  uid: string
+  name: string
+  longitude: number
+  latitude: number
+  address?: string
+  province?: string
+  city?: string
+  region?: string
+  fullAddress?: string
+  poiCheckSum?: string
+}
+
+export interface WxSphEventInfo {
+  eventTopicId: string
+  eventName: string
+  eventCreatorNickname?: string
+  eventAttendCount?: number
+}
+
+export interface PluginVersionInfo {
+  /** 插件版本号 */
+  version: string
 }
 
 /**
  * 插件 API 接口定义
  */
 export interface AIToEarnPluginAPI {
-  /**
-   * 获取插件版本
-   */
-  getVersion?: () => Promise<{ name?: string, version?: string }>
-
   /**
    * 检查插件权限
    * @returns Promise<权限检查结果>
@@ -214,7 +244,7 @@ export interface AIToEarnPluginAPI {
    * @param platform 平台类型
    * @returns Promise<账号信息>
    */
-  login: (platform: PluginAccountPlatformType) => Promise<PlatAccountInfo>
+  login: (platform: PluginPlatformType) => Promise<PlatAccountInfo>
 
   /**
    * 发布内容到指定平台
@@ -223,6 +253,13 @@ export interface AIToEarnPluginAPI {
    * @returns Promise<发布结果>
    */
   publish: (params: PublishParams, onProgress?: ProgressCallback) => Promise<PublishResult>
+
+  /**
+   * 通用代理请求
+   * 直接请求任意 URL，并返回原始响应文本和状态信息
+   * 旧版本插件可能不存在该方法，调用前需要兼容判断
+   */
+  proxyRequest?: (params: PluginProxyRequestParams) => Promise<PluginProxyResponse>
 
   /**
    * 小红书通用请求
@@ -239,6 +276,14 @@ export interface AIToEarnPluginAPI {
    * @returns Promise<响应数据>
    */
   douyinRequest: <T = any>(params: PlatformRequestParams) => Promise<T>
+
+  wxSphSearchLocation?: (params: WxSphLocationSearchParams) => Promise<WxSphLocationItem[]>
+
+  wxSphSearchActivity?: (params: { query: string }) => Promise<WxSphEventInfo[]>
+
+  wxSphStartLinkPolling?: (
+    params: WxSphStartLinkPollingParams,
+  ) => Promise<WxSphStartLinkPollingResult>
 
   /**
    * 抖音交互操作（自动化方案）
@@ -257,14 +302,52 @@ export interface AIToEarnPluginAPI {
   douyinDirectMessage: (params: DouyinDirectMessageParams) => Promise<DouyinInteractionResult>
 
   /**
-   * 统一平台互动能力
+   * 获取插件版本号
+   * 旧版本插件可能不存在该方法，调用前需要兼容判断
    */
-  unifiedInteraction?: (params: Record<string, any>) => Promise<any>
+  getVersion?: () => Promise<PluginVersionInfo>
 
   /**
-   * 客户雷达页面执行器能力
+   * 统一互动操作（跨平台点赞、收藏、评论）
+   * 支持抖音和小红书，使用自动化方案
+   * 旧版本插件可能不存在该方法，调用前需要兼容判断
    */
-  remoteAutomationRun?: <T = any>(params: RemoteAutomationRunParams) => Promise<RemoteAutomationRunResult<T>>
+  unifiedInteraction?: (params: {
+    platform: string
+    action: 'like' | 'favorite' | 'comment'
+    /** 作品链接（完整 URL） */
+    workLink: string
+    targetState: boolean
+    content?: string
+    needScreenshot?: boolean
+  }) => Promise<{
+    success: boolean
+    currentState?: boolean
+    message?: string
+    screenshot?: string
+    needHumanAssist?: boolean
+    verificationReason?: string
+    error?: string
+  }>
+
+  /**
+   * 远程自动化执行
+   * 固定流程：打开页面 -> 执行代码 -> 截图 -> 返回结果
+   * 旧版本插件可能不存在该方法，调用前需要兼容判断
+   */
+  remoteAutomationRun?: (params: {
+    url: string
+    code: string
+    timeout?: number
+    needScreenshot?: boolean
+  }) => Promise<{
+    success: boolean
+    message?: string
+    error?: string
+    result?: unknown
+    executionTime?: number
+    screenshot?: string
+  }>
 }
 
 /**
@@ -274,8 +357,6 @@ declare global {
   interface Window {
     // @ts-ignore
     AIToEarnPlugin?: AIToEarnPluginAPI
-    __AIToEarnMessageBridge?: AIToEarnPluginAPI
-    JuJingBrowserBridge?: AIToEarnPluginAPI
   }
 }
 

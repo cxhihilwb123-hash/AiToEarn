@@ -7,3 +7,5 @@ export const ProxyUrls = [
 
 // 联系方式
 export const CONTACT = APP_BRAND.contactEmail
+
+export const PluginVersionLast = '3.0.3'

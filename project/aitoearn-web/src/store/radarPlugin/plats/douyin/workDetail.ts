@@ -37,7 +37,7 @@ function extractTopicsFromDesc(desc: string): string[] {
   const regex = /#([^\s#]+)/g
   const topics: string[] = []
   let match
-  while ((match = regex.exec(desc)) !== null) { // eslint-disable-line no-cond-assign
+  while ((match = regex.exec(desc)) !== null) {
     topics.push(match[1])
   }
   return topics

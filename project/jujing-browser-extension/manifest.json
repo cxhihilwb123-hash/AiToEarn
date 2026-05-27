@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "巨鲸网络智能获客助手",
-  "description": "连接巨鲸网络客户雷达与平台公开页面，用于评论抓取、关键词线索扫描与人工确认后的互动执行。",
-  "version": "0.1.4",
+  "name": "巨鲸网络客户雷达助手",
+  "description": "客户雷达专用浏览器助手，用于公开页面线索扫描、评论抓取与人工确认后的互动执行；不接管原版发布插件。",
+  "version": "0.2.0",
   "minimum_chrome_version": "114",
   "permissions": [
     "activeTab",
