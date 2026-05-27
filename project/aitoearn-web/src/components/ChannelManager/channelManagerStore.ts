@@ -83,6 +83,37 @@ const initialState: ChannelManagerState = {
   isNewUser: false,
 }
 
+function pickAuthUrlResponse(res: any): AuthUrlResponse | null {
+  const payload = res?.data?.data || res?.data || res
+  const url = payload?.url || payload?.uri || payload?.authUrl || payload?.redirectUrl
+  const taskId = payload?.taskId || payload?.id || payload?.state
+
+  if (!isValidAuthUrl(url) || typeof taskId !== 'string' || !taskId.trim()) {
+    return null
+  }
+
+  return { url: url.trim(), taskId }
+}
+
+function isValidAuthUrl(url: unknown): url is string {
+  if (typeof url !== 'string') {
+    return false
+  }
+
+  const trimmed = url.trim()
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') {
+    return false
+  }
+
+  try {
+    const parsedUrl = new URL(trimmed)
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+  }
+  catch {
+    return false
+  }
+}
+
 function getInitialState(): ChannelManagerState {
   return lodash.cloneDeep(initialState)
 }
@@ -116,88 +147,52 @@ async function getAuthUrl(platform: PlatType, spaceId?: string): Promise<AuthUrl
     switch (platform) {
       case PlatType.KWAI:
         res = await createKwaiAuth('pc', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.BILIBILI:
         res = await apiGetBilibiliLoginUrl('pc', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Douyin:
         res = await createDouyinAuth('pc', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.YouTube:
         res = await getYouTubeAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Tiktok:
         res = await getTiktokAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Facebook:
         res = await getFacebookAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Instagram:
         res = await getInstagramAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Threads:
         res = await getThreadsAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.LinkedIn:
         res = await getLinkedInAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Twitter:
         // Twitter 使用与 Meta 系列相同的授权逻辑
         res = await getTwitterAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.WxGzh:
         res = await getWxGzhAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.url, taskId: res.data.id || res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       case PlatType.Pinterest:
         res = await getPinterestAuthUrlApi('', spaceId)
-        if (res?.data) {
-          return { url: res.data.uri, taskId: res.data.taskId }
-        }
-        break
+        return pickAuthUrlResponse(res)
 
       default:
         console.warn(`Platform ${platform} not supported for OAuth`)
