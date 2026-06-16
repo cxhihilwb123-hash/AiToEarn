@@ -11,7 +11,7 @@ import type {
   ChannelManagerView,
 } from './types'
 import type { SocialAccount } from '@/api/types/account.type'
-import type { PluginPlatformType } from '@/store/plugin'
+import type { PluginAccountPlatformType } from '@/store/plugin'
 import lodash from 'lodash'
 import { create } from 'zustand'
 import { combine } from 'zustand/middleware'
@@ -38,7 +38,7 @@ import { AccountPlatInfoMap, PlatType } from '@/app/config/platConfig'
 import i18next from '@/app/i18n/client'
 import { toast } from '@/lib/toast'
 import { useAccountStore } from '@/store/account'
-import { PLUGIN_SUPPORTED_PLATFORMS, PluginStatus, usePluginStore } from '@/store/plugin'
+import { PLUGIN_ACCOUNT_AUTH_PLATFORMS, PluginStatus, usePluginStore } from '@/store/plugin'
 import { useUserStore } from '@/store/user'
 import { DEFAULT_AUTH_COUNTDOWN, POLLING_INTERVAL } from './types'
 
@@ -52,8 +52,8 @@ function t(key: string, options?: Record<string, string>): string {
 /**
  * 检查平台是否为插件支持的平台
  */
-function isPluginSupportedPlatform(platform: PlatType): platform is PluginPlatformType {
-  return PLUGIN_SUPPORTED_PLATFORMS.includes(platform as PluginPlatformType)
+function isPluginSupportedPlatform(platform: PlatType): platform is PluginAccountPlatformType {
+  return PLUGIN_ACCOUNT_AUTH_PLATFORMS.includes(platform as PluginAccountPlatformType)
 }
 
 /** 初始授权状态 */
@@ -76,6 +76,7 @@ const initialState: ChannelManagerState = {
   targetSpaceId: null,
   onAuthSuccess: null,
   isNewUser: false,
+  pendingPluginAccountConfirm: null,
 }
 
 function getInitialState(): ChannelManagerState {
@@ -534,13 +535,11 @@ export const useChannelManagerStore = create(
         }
       },
 
-      /**
-       * 处理插件平台的授权（小红书、抖音等）
-       * 这些平台通过浏览器插件同步账号，而非OAuth
-       */
-      async handlePluginPlatformAuth(platform: PluginPlatformType, spaceId?: string) {
+      /** 处理插件平台的网页登录态授权 */
+      async handlePluginPlatformAuth(platform: PluginAccountPlatformType, spaceId?: string) {
         const pluginStore = usePluginStore.getState()
-        const platformName = AccountPlatInfoMap.get(platform)?.name || platform
+        const platInfo = AccountPlatInfoMap.get(platform)
+        const platformName = platInfo?.name || platform
 
         // 检查插件是否就绪
         if (pluginStore.status !== PluginStatus.READY) {
@@ -555,20 +554,50 @@ export const useChannelManagerStore = create(
           return
         }
 
-        // 检查是否有账号
-        const account = pluginStore.platformAccounts[platform]
+        // 通过插件读取平台登录态。即使本地 store 暂无缓存，也主动触发一次插件登录检测。
+        let account = pluginStore.platformAccounts[platform]
         if (!account) {
-          // 平台未登录，重置状态并打开插件弹框
+          try {
+            account = await pluginStore.login(platform)
+          }
+          catch (error) {
+            console.error('Plugin platform login detection failed:', error)
+          }
+        }
+
+        if (!account) {
+          // 平台未登录，按原版方式打开平台官网让用户先登录。
           set({
             currentView: 'connect-list',
             authState: { ...initialAuthState },
           })
+          if (platInfo?.url)
+            window.open(platInfo.url, '_blank')
           toast.warning(t('channelManager.platformNotLoggedIn', { platform: platformName }))
-          // 打开插件弹框引导用户登录
-          pluginStore.openPluginModal()
           return
         }
 
+        const accountName = account.nickname || account.account || account.uid
+        set({
+          currentView: 'connect-list',
+          authState: { ...initialAuthState },
+          pendingPluginAccountConfirm: {
+            platform,
+            platformName,
+            accountName,
+            spaceId,
+          },
+        })
+      },
+
+      /** 确认同步插件检测到的平台账号 */
+      async confirmPluginAccountSync() {
+        const pending = get().pendingPluginAccountConfirm
+        if (!pending)
+          return
+
+        const { platform, spaceId } = pending
+        const pluginStore = usePluginStore.getState()
         // 同步账号到数据库
         try {
           const result = await pluginStore.syncAccountToDatabase(platform, spaceId)
@@ -580,6 +609,8 @@ export const useChannelManagerStore = create(
             // 刷新账户列表
             await useAccountStore.getState().getAccountList()
 
+            set({ pendingPluginAccountConfirm: null })
+
             // 处理授权成功
             methods.handleAuthSuccess(result)
           }
@@ -587,6 +618,7 @@ export const useChannelManagerStore = create(
             set({
               currentView: 'connect-list',
               authState: { ...initialAuthState },
+              pendingPluginAccountConfirm: null,
             })
             toast.error(t('channelManager.syncFailed'))
           }
@@ -596,9 +628,27 @@ export const useChannelManagerStore = create(
           set({
             currentView: 'connect-list',
             authState: { ...initialAuthState },
+            pendingPluginAccountConfirm: null,
           })
           toast.error(t('channelManager.syncFailed'))
         }
+      },
+
+      /** 取消同步插件检测到的平台账号 */
+      rejectPluginAccountSync() {
+        const pending = get().pendingPluginAccountConfirm
+        if (!pending)
+          return
+
+        const platInfo = AccountPlatInfoMap.get(pending.platform)
+        set({
+          currentView: 'connect-list',
+          authState: { ...initialAuthState },
+          pendingPluginAccountConfirm: null,
+        })
+        if (platInfo?.url)
+          window.open(platInfo.url, '_blank')
+        toast.warning(`请先在${pending.platformName}页面切换或登录你的账号，再回来添加频道`)
       },
 
       /** 停止授权（取消/超时） */

@@ -1,6 +1,5 @@
 import { dir } from 'i18next'
 import { headers } from 'next/headers'
-import Script from 'next/script'
 import { useTranslation } from '@/app/i18n'
 import { fallbackLng, languages } from '@/app/i18n/settings'
 import LayoutSidebar from '@/app/layout/LayoutSidebar'
@@ -8,6 +7,7 @@ import { MainContent } from '@/app/layout/MainContent'
 import MobileNav from '@/app/layout/MobileNav'
 import { ChannelManager } from '@/components/ChannelManager'
 import { StructuredData } from '@/components/SEO/StructuredData'
+import { APP_BRAND } from '@/config/brand'
 import { getHreflang } from '@/lib/i18n/languageConfig'
 import { Providers } from '../layout/Providers'
 import '@/app/var.css'
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lng: stri
   return {
     title: t('title'),
     description: t('content'),
-    keywords: 'aitoearn, AiToEarn, ai, earn, aitoearn.com',
+    keywords: `${APP_BRAND.name}, AI内容创作, 社媒管理, 多平台发布`,
     alternates: {
       languages: Object.fromEntries(alternateRefs.map(({ href, hreflang }) => [hreflang, href])),
     },
@@ -58,7 +58,6 @@ export default async function RootLayout({
   const host = headersList.get('host') || 'localhost:3000'
   const proto = headersList.get('x-forwarded-proto') || 'https'
   const baseUrl = `${proto}://${host}`
-  const autoLoginToken = process.env.AUTO_LOGIN_TOKEN || ''
 
   return (
     <html lang={lng} dir={dir(lng)} suppressHydrationWarning>
@@ -71,14 +70,14 @@ export default async function RootLayout({
         {/* SEO: 全局结构化数据 */}
         <StructuredData
           organization={{
-            name: 'AiToEarn',
+            name: APP_BRAND.name,
             url: baseUrl,
             logo: `${baseUrl}/logo.png`,
             description: 'AI-powered content creation and social media management platform',
-            sameAs: ['https://twitter.com/aitoearn', 'https://www.linkedin.com/company/aitoearn'],
+            sameAs: [],
           }}
           website={{
-            name: 'AiToEarn',
+            name: APP_BRAND.name,
             url: baseUrl,
             description: 'AI-powered content creation and social media management platform',
             potentialAction: {
@@ -90,16 +89,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        {/* Rewardful 脚本 */}
-        <Script
-          id="rewardful-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`,
-          }}
-        />
-        <Script src="https://r.wdfl.co/rw.js" data-rewardful="ded70f" strategy="afterInteractive" />
-        <Providers lng={lng} autoLoginToken={autoLoginToken}>
+        <Providers lng={lng}>
           {/* 全局频道管理弹框 */}
           <ChannelManager />
           <p className="hidden">Impact-Site-Verification: f9836212-462a-482f-9232-8a877970eacf</p>

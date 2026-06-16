@@ -50,14 +50,44 @@ export enum PluginStatus {
 }
 
 /**
- * 插件支持的平台列表
+ * 插件发布支持的平台列表。
+ *
+ * 注意：这里只控制内容发布是否走插件执行，不等同于频道账号登录检测范围。
  */
 export const PLUGIN_SUPPORTED_PLATFORMS = [PlatType.Xhs] as const
+
+/**
+ * 插件账号登录检测支持的平台列表。
+ *
+ * 原版插件登录链路是打开/读取平台网页登录态，再同步账号到频道管理；不需要先有
+ * 官方 OAuth client id，也不要求用户在未登录前就已经有平台账号 id。
+ */
+export const PLUGIN_ACCOUNT_AUTH_PLATFORMS = [
+  PlatType.Xhs,
+  PlatType.Douyin,
+  PlatType.KWAI,
+  PlatType.BILIBILI,
+  PlatType.WxSph,
+  PlatType.WxGzh,
+  PlatType.Tiktok,
+  PlatType.YouTube,
+  PlatType.Facebook,
+  PlatType.Instagram,
+  PlatType.Threads,
+  PlatType.Twitter,
+  PlatType.Pinterest,
+  PlatType.LinkedIn,
+] as const
 
 /**
  * 插件支持的平台类型（直接复用 PlatType）
  */
 export type PluginPlatformType = (typeof PLUGIN_SUPPORTED_PLATFORMS)[number]
+
+/**
+ * 插件账号登录检测平台类型
+ */
+export type PluginAccountPlatformType = (typeof PLUGIN_ACCOUNT_AUTH_PLATFORMS)[number]
 
 /**
  * 发布参数（扩展基础类型，添加 platform 字段）
@@ -139,9 +169,40 @@ export interface DouyinInteractionResult {
 }
 
 /**
+ * 远程页面自动化执行参数
+ */
+export interface RemoteAutomationRunParams {
+  /** 目标页面 URL */
+  url: string
+  /** 在目标页面主上下文执行的 JS 代码 */
+  code: string
+  /** 超时时间 */
+  timeout?: number
+  /** 是否返回截图 */
+  needScreenshot?: boolean
+}
+
+/**
+ * 远程页面自动化执行结果
+ */
+export interface RemoteAutomationRunResult<T = any> {
+  success: boolean
+  message?: string
+  error?: string
+  result?: T
+  executionTime?: number
+  screenshot?: string
+}
+
+/**
  * 插件 API 接口定义
  */
 export interface AIToEarnPluginAPI {
+  /**
+   * 获取插件版本
+   */
+  getVersion?: () => Promise<{ name?: string, version?: string }>
+
   /**
    * 检查插件权限
    * @returns Promise<权限检查结果>
@@ -153,7 +214,7 @@ export interface AIToEarnPluginAPI {
    * @param platform 平台类型
    * @returns Promise<账号信息>
    */
-  login: (platform: PluginPlatformType) => Promise<PlatAccountInfo>
+  login: (platform: PluginAccountPlatformType) => Promise<PlatAccountInfo>
 
   /**
    * 发布内容到指定平台
@@ -194,6 +255,16 @@ export interface AIToEarnPluginAPI {
    * @returns Promise<私信结果>
    */
   douyinDirectMessage: (params: DouyinDirectMessageParams) => Promise<DouyinInteractionResult>
+
+  /**
+   * 统一平台互动能力
+   */
+  unifiedInteraction?: (params: Record<string, any>) => Promise<any>
+
+  /**
+   * 客户雷达页面执行器能力
+   */
+  remoteAutomationRun?: <T = any>(params: RemoteAutomationRunParams) => Promise<RemoteAutomationRunResult<T>>
 }
 
 /**
@@ -203,6 +274,8 @@ declare global {
   interface Window {
     // @ts-ignore
     AIToEarnPlugin?: AIToEarnPluginAPI
+    __AIToEarnMessageBridge?: AIToEarnPluginAPI
+    JuJingBrowserBridge?: AIToEarnPluginAPI
   }
 }
 

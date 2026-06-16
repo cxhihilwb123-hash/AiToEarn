@@ -5,15 +5,14 @@ import type { MobileNavListProps } from '../types'
 import {
   ChevronDown,
   ChevronUp,
-  Globe,
   MoreHorizontal,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useTransClient } from '@/app/i18n/client'
-import { routerData } from '@/app/layout/routerData'
+import { filterRouterDataForUser, routerData } from '@/app/layout/routerData'
 import { NAV_GROUP_KEYS } from '@/app/layout/shared'
 import { cn } from '@/lib/utils'
+import { useUserStore } from '@/store/user'
 import { MobileMyChannelsButton } from './MobileMyChannelsButton'
 import { MobileNavItem } from './MobileNavItem'
 
@@ -24,13 +23,15 @@ export function MobileNavList({
 }: MobileNavListProps) {
   const { t } = useTransClient(['route', 'common'])
   const [moreOpen, setMoreOpen] = useState(false)
+  const userInfo = useUserStore(state => state.userInfo)
+  const visibleRouterData = filterRouterDataForUser(routerData, userInfo)
 
   // Main items: only Home and Publish (accounts)
-  const mainItems = routerData.filter(i => !NAV_GROUP_KEYS.includes(i.translationKey as typeof NAV_GROUP_KEYS[number]))
+  const mainItems = visibleRouterData.filter(i => !NAV_GROUP_KEYS.includes(i.translationKey as typeof NAV_GROUP_KEYS[number]))
   // Grouped items in specified order
   const groupedItems = NAV_GROUP_KEYS
-    .map(key => routerData.find(i => i.translationKey === key))
-    .filter((i): i is (typeof routerData)[0] => i !== undefined)
+    .map(key => visibleRouterData.find(i => i.translationKey === key))
+    .filter((i): i is (typeof visibleRouterData)[0] => i !== undefined)
 
   // Auto-expand if current route is in grouped items
   useEffect(() => {
@@ -94,21 +95,6 @@ export function MobileNavList({
                   onClose={onClose}
                 />
               ))}
-
-              {/* 前往官网 */}
-              <Link
-                href="/welcome"
-                onClick={onClose}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-all',
-                  'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  currentRoute === '/welcome' && 'bg-primary/10 text-primary',
-                )}
-              >
-                <Globe size={20} className="text-muted-foreground" />
-                <span>{t('common:goToWebsite')}</span>
-              </Link>
-
             </div>
           )}
         </div>

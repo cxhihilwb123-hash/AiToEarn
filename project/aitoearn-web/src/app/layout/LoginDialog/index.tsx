@@ -5,15 +5,14 @@
 
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { memo, useCallback } from 'react'
 import { useShallow } from 'zustand/shallow'
 
-import { EmailLoginForm } from '@/app/[lng]/auth/login/components/LoginContent/EmailLoginForm'
+import { PasswordLoginForm } from '@/app/[lng]/auth/login/components/LoginContent/PasswordLoginForm'
 import { useTransClient } from '@/app/i18n/client'
-import logo from '@/assets/images/logo.png'
+import { BrandWordmark } from '@/components/Brand/BrandWordmark'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -47,11 +46,8 @@ const LoginDialogContent = memo(() => {
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open) {
       closeLoginDialog()
-      if (fromGuard) {
-        router.push('/')
-      }
     }
-  }, [closeLoginDialog, fromGuard, router])
+  }, [closeLoginDialog])
 
   const handleLoginSuccess = useCallback(() => {
     closeLoginDialog()
@@ -76,20 +72,14 @@ const LoginDialogContent = memo(() => {
 
         {/* Logo + 标题 */}
         <div className="flex flex-col items-center pb-2 pt-2">
-          <Image
-            src={logo}
-            alt="AiToEarn"
-            width={56}
-            height={56}
-            className="mb-4 drop-shadow-md"
-          />
+          <BrandWordmark className="mb-4" direction="stack" markSize={56} showTagline size="md" />
           <h2 className="text-xl font-semibold text-foreground">{t('welcomeBack')}</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">{t('loginSubtitle')}</p>
         </div>
 
         {/* 登录表单 */}
         <div className="px-2">
-          <EmailLoginForm
+          <PasswordLoginForm
             onLoginSuccess={handleLoginSuccess}
             redirectUrl={redirectUrl}
             inviteCode={inviteCode}
